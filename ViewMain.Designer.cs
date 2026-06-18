@@ -28,146 +28,178 @@
         /// </summary>
         private void InitializeComponent()
         {
-            textBox1 = new TextBox();
-            menuStrip1 = new MenuStrip();
-            menuItemLogin = new ToolStripMenuItem();
-            toolStripTextBox1 = new ToolStripMenuItem();
-            tstbUsuario = new ToolStripTextBox();
-            toolStripMenuItem2 = new ToolStripMenuItem();
-            tstbContrasena = new ToolStripTextBox();
-            btnIngresar = new ToolStripTextBox();
-            menuItemConfiguracion = new ToolStripMenuItem();
-            toolStripMenuItem4 = new ToolStripMenuItem();
-            cbxTrama = new ToolStripComboBox();
-            abrirTrama = new ToolStripTextBox();
-            cerrarTrama = new ToolStripTextBox();
-            btnGuardarConfiguracion = new ToolStripTextBox();
-            menuStrip1.SuspendLayout();
+            components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ViewMain));
+            txtTrama = new TextBox();
+            statusStrip1 = new StatusStrip();
+            toolStripSplitButton1 = new ToolStripSplitButton();
+            toolStripTextBox2 = new ToolStripMenuItem();
+            txtUsuario = new ToolStripTextBox();
+            toolStripMenuItem1 = new ToolStripMenuItem();
+            txtContrasena = new ToolStripTextBox();
+            btnIngresar = new ToolStripMenuItem();
+            toolStripDropDownButton1 = new ToolStripDropDownButton();
+            toolStripMenuItem3 = new ToolStripMenuItem();
+            cbxTramas = new ToolStripComboBox();
+            btnAbrirTrama = new ToolStripMenuItem();
+            btnCerrarTrama = new ToolStripMenuItem();
+            btnGuardarConfiguracion = new ToolStripMenuItem();
+            timer1 = new System.Windows.Forms.Timer(components);
+            timer2 = new System.Windows.Forms.Timer(components);
+            statusStrip1.SuspendLayout();
             SuspendLayout();
             // 
-            // textBox1
+            // txtTrama
             // 
-            textBox1.Font = new Font("Segoe UI Semibold", 48F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            textBox1.Location = new Point(33, 53);
-            textBox1.Name = "textBox1";
-            textBox1.Size = new Size(511, 93);
-            textBox1.TabIndex = 0;
+            txtTrama.BackColor = SystemColors.MenuText;
+            txtTrama.BorderStyle = BorderStyle.None;
+            txtTrama.Font = new Font("Segoe UI Semibold", 48F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            txtTrama.ForeColor = Color.OrangeRed;
+            txtTrama.Location = new Point(0, -3);
+            txtTrama.Name = "txtTrama";
+            txtTrama.Size = new Size(256, 86);
+            txtTrama.TabIndex = 0;
+            txtTrama.Text = "784984598";
+            txtTrama.Enter += txtTrama_Enter;
             // 
-            // menuStrip1
+            // statusStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { menuItemLogin, menuItemConfiguracion });
-            menuStrip1.Location = new Point(0, 0);
-            menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(800, 24);
-            menuStrip1.TabIndex = 1;
-            menuStrip1.Text = "menuStrip1";
+            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, toolStripDropDownButton1 });
+            statusStrip1.Location = new Point(0, 428);
+            statusStrip1.Name = "statusStrip1";
+            statusStrip1.Size = new Size(800, 22);
+            statusStrip1.TabIndex = 2;
+            statusStrip1.Text = "statusStrip1";
             // 
-            // menuItemLogin
+            // toolStripSplitButton1
             // 
-            menuItemLogin.DropDownItems.AddRange(new ToolStripItem[] { toolStripTextBox1, toolStripMenuItem2, btnIngresar });
-            menuItemLogin.Name = "menuItemLogin";
-            menuItemLogin.Size = new Size(49, 20);
-            menuItemLogin.Text = "Login";
+            toolStripSplitButton1.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripSplitButton1.DropDownItems.AddRange(new ToolStripItem[] { toolStripTextBox2, toolStripMenuItem1, btnIngresar });
+            toolStripSplitButton1.Image = (Image)resources.GetObject("toolStripSplitButton1.Image");
+            toolStripSplitButton1.ImageTransparentColor = Color.Magenta;
+            toolStripSplitButton1.Name = "toolStripSplitButton1";
+            toolStripSplitButton1.Size = new Size(53, 20);
+            toolStripSplitButton1.Text = "Login";
+            toolStripSplitButton1.TextAlign = ContentAlignment.MiddleRight;
             // 
-            // toolStripTextBox1
+            // toolStripTextBox2
             // 
-            toolStripTextBox1.DropDownItems.AddRange(new ToolStripItem[] { tstbUsuario });
-            toolStripTextBox1.Name = "toolStripTextBox1";
-            toolStripTextBox1.Size = new Size(180, 22);
-            toolStripTextBox1.Text = "Usuario";
+            toolStripTextBox2.DropDownItems.AddRange(new ToolStripItem[] { txtUsuario });
+            toolStripTextBox2.Name = "toolStripTextBox2";
+            toolStripTextBox2.Size = new Size(134, 22);
+            toolStripTextBox2.Text = "Usuario";
             // 
-            // tstbUsuario
+            // txtUsuario
             // 
-            tstbUsuario.Name = "tstbUsuario";
-            tstbUsuario.Size = new Size(100, 23);
+            txtUsuario.Name = "txtUsuario";
+            txtUsuario.Size = new Size(100, 23);
             // 
-            // toolStripMenuItem2
+            // toolStripMenuItem1
             // 
-            toolStripMenuItem2.DropDownItems.AddRange(new ToolStripItem[] { tstbContrasena });
-            toolStripMenuItem2.Name = "toolStripMenuItem2";
-            toolStripMenuItem2.Size = new Size(180, 22);
-            toolStripMenuItem2.Text = "Contraseña";
+            toolStripMenuItem1.DropDownItems.AddRange(new ToolStripItem[] { txtContrasena });
+            toolStripMenuItem1.Name = "toolStripMenuItem1";
+            toolStripMenuItem1.Size = new Size(134, 22);
+            toolStripMenuItem1.Text = "Contraseña";
             // 
-            // tstbContrasena
+            // txtContrasena
             // 
-            tstbContrasena.Name = "tstbContrasena";
-            tstbContrasena.Size = new Size(100, 23);
+            txtContrasena.Name = "txtContrasena";
+            txtContrasena.Size = new Size(100, 23);
             // 
             // btnIngresar
             // 
             btnIngresar.Name = "btnIngresar";
-            btnIngresar.Size = new Size(100, 23);
+            btnIngresar.Size = new Size(134, 22);
             btnIngresar.Text = "Ingresar";
             // 
-            // menuItemConfiguracion
+            // toolStripDropDownButton1
             // 
-            menuItemConfiguracion.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem4, btnGuardarConfiguracion });
-            menuItemConfiguracion.Name = "menuItemConfiguracion";
-            menuItemConfiguracion.Size = new Size(95, 20);
-            menuItemConfiguracion.Text = "Configuración";
+            toolStripDropDownButton1.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripDropDownButton1.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem3, btnGuardarConfiguracion });
+            toolStripDropDownButton1.Image = (Image)resources.GetObject("toolStripDropDownButton1.Image");
+            toolStripDropDownButton1.ImageScaling = ToolStripItemImageScaling.None;
+            toolStripDropDownButton1.ImageTransparentColor = Color.Magenta;
+            toolStripDropDownButton1.Name = "toolStripDropDownButton1";
+            toolStripDropDownButton1.Size = new Size(96, 20);
+            toolStripDropDownButton1.Text = "Configuración";
             // 
-            // toolStripMenuItem4
+            // toolStripMenuItem3
             // 
-            toolStripMenuItem4.DropDownItems.AddRange(new ToolStripItem[] { cbxTrama, abrirTrama, cerrarTrama });
-            toolStripMenuItem4.Name = "toolStripMenuItem4";
-            toolStripMenuItem4.Size = new Size(210, 22);
-            toolStripMenuItem4.Text = "Trama";
+            toolStripMenuItem3.DropDownItems.AddRange(new ToolStripItem[] { cbxTramas, btnAbrirTrama, btnCerrarTrama });
+            toolStripMenuItem3.Name = "toolStripMenuItem3";
+            toolStripMenuItem3.Size = new Size(195, 22);
+            toolStripMenuItem3.Text = "Trama";
             // 
-            // cbxTrama
+            // cbxTramas
             // 
-            cbxTrama.Name = "cbxTrama";
-            cbxTrama.Size = new Size(121, 23);
+            cbxTramas.Name = "cbxTramas";
+            cbxTramas.Size = new Size(121, 23);
             // 
-            // abrirTrama
+            // btnAbrirTrama
             // 
-            abrirTrama.Name = "abrirTrama";
-            abrirTrama.Size = new Size(100, 23);
-            abrirTrama.Text = "Abrir";
+            btnAbrirTrama.Name = "btnAbrirTrama";
+            btnAbrirTrama.Size = new Size(181, 22);
+            btnAbrirTrama.Text = "Abrir";
             // 
-            // cerrarTrama
+            // btnCerrarTrama
             // 
-            cerrarTrama.Name = "cerrarTrama";
-            cerrarTrama.Size = new Size(100, 23);
-            cerrarTrama.Text = "Cerrar";
+            btnCerrarTrama.Name = "btnCerrarTrama";
+            btnCerrarTrama.Size = new Size(181, 22);
+            btnCerrarTrama.Text = "Cerrar";
             // 
             // btnGuardarConfiguracion
             // 
             btnGuardarConfiguracion.Name = "btnGuardarConfiguracion";
-            btnGuardarConfiguracion.Size = new Size(150, 23);
-            btnGuardarConfiguracion.Text = "Guardar configuración";
+            btnGuardarConfiguracion.Size = new Size(195, 22);
+            btnGuardarConfiguracion.Text = "Guardar Configuración";
             // 
             // ViewMain
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Controls.Add(textBox1);
-            Controls.Add(menuStrip1);
-            MainMenuStrip = menuStrip1;
+            ControlBox = false;
+            Controls.Add(statusStrip1);
+            Controls.Add(txtTrama);
+            FormBorderStyle = FormBorderStyle.None;
             Name = "ViewMain";
             Text = "PRINCIPAL";
             Load += ViewMain_Load;
-            menuStrip1.ResumeLayout(false);
-            menuStrip1.PerformLayout();
+            statusStrip1.ResumeLayout(false);
+            statusStrip1.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
 
         #endregion
 
-        private TextBox textBox1;
+        private TextBox txtTrama;
         private MenuStrip menuStrip1;
         private ToolStripMenuItem menuItemLogin;
         private ToolStripMenuItem toolStripTextBox1;
         private ToolStripTextBox tstbUsuario;
-        private ToolStripMenuItem toolStripMenuItem2;
         private ToolStripTextBox tstbContrasena;
-        private ToolStripTextBox btnIngresar;
+        //private ToolStripTextBox btnIngresar;
         private ToolStripMenuItem menuItemConfiguracion;
         private ToolStripMenuItem toolStripMenuItem4;
         private ToolStripComboBox cbxTrama;
         private ToolStripTextBox abrirTrama;
         private ToolStripTextBox cerrarTrama;
-        private ToolStripTextBox btnGuardarConfiguracion;
+        private StatusStrip statusStrip1;
+        private ToolStripSplitButton toolStripSplitButton1;
+        private ToolStripMenuItem toolStripTextBox2;
+        private ToolStripMenuItem toolStripMenuItem1;
+        private ToolStripTextBox toolStripTextBox3;
+        private ToolStripDropDownButton toolStripDropDownButton1;
+        private ToolStripMenuItem toolStripMenuItem3;
+        private ToolStripComboBox cbxTramas;
+        private ToolStripMenuItem btnAbrirTrama;
+        private ToolStripMenuItem btnCerrarTrama;
+        private ToolStripMenuItem btnIngresar;
+        private ToolStripTextBox txtUsuario;
+        private ToolStripTextBox txtContrasena;
+        private ToolStripMenuItem btnGuardarConfiguracion;
+        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Timer timer2;
     }
 }

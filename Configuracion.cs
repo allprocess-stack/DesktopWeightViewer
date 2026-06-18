@@ -7,7 +7,8 @@ namespace DesktopWeightViewer
         public string TipoTrama { get; set; } = string.Empty;
 
         private static string RutaArchivo =>
-            Path.Combine(AppContext.BaseDirectory, "config.json");
+    Path.Combine(Directory.GetParent(AppContext.BaseDirectory)!.Parent!.Parent!.FullName, "config.json");
+
 
         public void Guardar()
         {

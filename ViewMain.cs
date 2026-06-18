@@ -11,10 +11,17 @@ namespace DesktopWeightViewer
         {
             InitializeComponent();
 
+            //Tamaño de Panel 
+            txtTrama.Size = new Size(256, 128);
+            //txtTrama no editable 
+            txtTrama.ReadOnly = true;
+            //Desactivacion de seleccion por defecto 
+            txtTrama.TabStop = false;
+
             serialPort1 = new SerialPort();
             tramaReader = new CbxTrama(serialPort1);
 
-            CargarConfiguracion();
+            //CargarConfiguracion();
 
             btnGuardarConfiguracion.Click += BtnGuardarConfiguracion_Click;
             Load += ViewMain_Load;
@@ -22,8 +29,8 @@ namespace DesktopWeightViewer
 
         private void ViewMain_Load(object? sender, EventArgs e)
         {
-            cbxTrama.Items.Clear();
-            cbxTrama.Items.AddRange(["XKR", "XK310", "Generic"]);
+            //cbxTrama.Items.Clear();
+            //cbxTrama.Items.AddRange(["XKR", "XK310", "Generic"]);
         }
 
         private void CargarConfiguracion()
@@ -46,6 +53,11 @@ namespace DesktopWeightViewer
             MessageBox.Show("Configuración guardada.", "Info",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-    }
+
+        private void txtTrama_Enter(object sender, EventArgs e)
+        {
+            txtTrama.SelectionLength = 0; // Quita cualquier selección
+        }
+}
 
 }
