@@ -38,6 +38,9 @@ namespace DesktopWeightViewer
                 case "XK310":
                     ReadWeight_XK310();
                     break;
+                case "FT11":
+                    ReadWeight_FT11();
+                    break;
                 case "Generic":
                     ReadWeight_Generic();
                     break;
@@ -69,7 +72,6 @@ namespace DesktopWeightViewer
 
                 char signo = Trama.ElementAt(1);
 
-                // Lee todos los dígitos consecutivos después del signo
                 int idx = 2;
                 while (idx < Trama.Length && char.IsDigit(Trama[idx]))
                     idx++;
@@ -83,7 +85,10 @@ namespace DesktopWeightViewer
                     peso = -peso;
 
                 if (peso < -999)
-                    peso = -999;
+                {
+                    PesoStr = "Valor negativo excedido";
+                    return;
+                }
 
                 timeoutSerial = 0;
                 PesoStr = peso.ToString("0");
@@ -96,8 +101,7 @@ namespace DesktopWeightViewer
 
         /// <summary>
         /// Lee y decodifica una trama de peso con formato XK310.
-        /// Formato esperado: STX + signo (1 char) + peso (dígitos variables).
-        /// Lee todos los dígitos consecutivos después del signo.
+        /// Formato esperado: STX + signo (1 char) + dígitos de peso variables.
         /// </summary>
         public void ReadWeight_XK310()
         {
@@ -116,7 +120,6 @@ namespace DesktopWeightViewer
 
                 char signo = Trama.ElementAt(1);
 
-                // Lee todos los dígitos consecutivos después del signo
                 int idx = 2;
                 while (idx < Trama.Length && char.IsDigit(Trama[idx]))
                     idx++;
@@ -130,7 +133,10 @@ namespace DesktopWeightViewer
                     peso = -peso;
 
                 if (peso < -999)
-                    peso = -999;
+                {
+                    PesoStr = "Valor negativo excedido";
+                    return;
+                }
 
                 timeoutSerial = 0;
                 PesoStr = peso.ToString("0");
@@ -165,7 +171,10 @@ namespace DesktopWeightViewer
                     long peso = long.Parse(match.Groups[1].Value);
 
                     if (peso < -999)
-                        peso = -999;
+                    {
+                        PesoStr = "Valor negativo excedido";
+                        return;
+                    }
 
                     timeoutSerial = 0;
                     PesoStr = peso.ToString("0");
@@ -175,6 +184,49 @@ namespace DesktopWeightViewer
             {
                 // Si hay error de parsing, se ignora esta lectura
             }
+        }
+
+        /// <summary>
+        /// Lee y decodifica una trama de peso con formato FT11.
+        /// Formato esperado: STX + codec (2 chars: signo y decimales) + 6 dígitos de peso.
+        /// </summary>
+        public void ReadWeight_FT11()
+        {
+            string text, rawPeso;
+            char[] codec;
+            int reg, signo;
+            int lon;
+            text = serialPort.ReadExisting();
+            lon = text.Length;
+
+            if (lon < 16)
+                return;
+
+            Trama = text.Substring(text.IndexOf('\x02'));
+            rawPeso = Trama.Substring(4, 6);
+            timeoutSerial = 0;
+
+            codec = Trama.Substring(1, 2).ToCharArray();
+
+            reg = codec[1] & 0x02;
+            if (reg == 2)
+            { signo = -1; }
+            else
+            { signo = 1; }
+
+            try
+            {
+                long peso = long.Parse(rawPeso) * signo;
+
+                if (peso < -999)
+                {
+                    PesoStr = "Valor negativo excedido";
+                    return;
+                }
+
+                PesoStr = peso.ToString();
+            }
+            catch { return; }
         }
 
         /// <summary>

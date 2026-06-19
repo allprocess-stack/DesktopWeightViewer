@@ -32,7 +32,13 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ViewMain));
             txtTrama = new TextBox();
             statusStrip1 = new StatusStrip();
-            toolStripDropDownButton1 = new ToolStripDropDownButton();
+            toolStripSplitButton1 = new ToolStripDropDownButton();
+            toolStripTextBox2 = new ToolStripMenuItem();
+            txtUsuario = new ToolStripTextBox();
+            toolStripMenuItem1 = new ToolStripMenuItem();
+            txtContrasena = new ToolStripTextBox();
+            btnIngresar = new ToolStripMenuItem();
+            menuConfiguracion = new ToolStripDropDownButton();
             toolStripMenuItem3 = new ToolStripMenuItem();
             cbxTramas = new ToolStripComboBox();
             btnAbrirTrama = new ToolStripMenuItem();
@@ -44,12 +50,6 @@
             btnGuardarConfiguracion = new ToolStripMenuItem();
             timer1 = new System.Windows.Forms.Timer(components);
             timer2 = new System.Windows.Forms.Timer(components);
-            toolStripSplitButton1 = new ToolStripDropDownButton();
-            toolStripTextBox2 = new ToolStripMenuItem();
-            txtUsuario = new ToolStripTextBox();
-            toolStripMenuItem1 = new ToolStripMenuItem();
-            txtContrasena = new ToolStripTextBox();
-            btnIngresar = new ToolStripMenuItem();
             statusStrip1.SuspendLayout();
             SuspendLayout();
             // 
@@ -69,78 +69,12 @@
             // statusStrip1
             // 
             statusStrip1.BackColor = SystemColors.InfoText;
-            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, toolStripDropDownButton1 });
+            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, menuConfiguracion });
             statusStrip1.Location = new Point(0, 428);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(800, 22);
             statusStrip1.TabIndex = 2;
             statusStrip1.Text = "statusStrip1";
-            // 
-            // toolStripDropDownButton1
-            // 
-            toolStripDropDownButton1.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            toolStripDropDownButton1.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem3, toolStripMenuItem2, btnGuardarConfiguracion });
-            toolStripDropDownButton1.Image = (Image)resources.GetObject("toolStripDropDownButton1.Image");
-            toolStripDropDownButton1.ImageScaling = ToolStripItemImageScaling.None;
-            toolStripDropDownButton1.ImageTransparentColor = Color.Magenta;
-            toolStripDropDownButton1.Name = "toolStripDropDownButton1";
-            toolStripDropDownButton1.Size = new Size(96, 20);
-            toolStripDropDownButton1.Text = "Configuración";
-            // 
-            // toolStripMenuItem3
-            // 
-            toolStripMenuItem3.DropDownItems.AddRange(new ToolStripItem[] { cbxTramas, btnAbrirTrama, btnCerrarTrama });
-            toolStripMenuItem3.Name = "toolStripMenuItem3";
-            toolStripMenuItem3.Size = new Size(195, 22);
-            toolStripMenuItem3.Text = "Trama";
-            // 
-            // cbxTramas
-            // 
-            cbxTramas.Name = "cbxTramas";
-            cbxTramas.Size = new Size(121, 23);
-            // 
-            // btnAbrirTrama
-            // 
-            btnAbrirTrama.Name = "btnAbrirTrama";
-            btnAbrirTrama.Size = new Size(181, 22);
-            btnAbrirTrama.Text = "Abrir";
-            // 
-            // btnCerrarTrama
-            // 
-            btnCerrarTrama.Name = "btnCerrarTrama";
-            btnCerrarTrama.Size = new Size(181, 22);
-            btnCerrarTrama.Text = "Cerrar";
-            // 
-            // toolStripMenuItem2
-            // 
-            toolStripMenuItem2.DropDownItems.AddRange(new ToolStripItem[] { cbxComBalanza, abrirBalanza, cerrarBalanza });
-            toolStripMenuItem2.Name = "toolStripMenuItem2";
-            toolStripMenuItem2.Size = new Size(195, 22);
-            toolStripMenuItem2.Text = "Balanza";
-            // 
-            // cbxComBalanza
-            // 
-            cbxComBalanza.Name = "cbxComBalanza";
-            cbxComBalanza.Size = new Size(121, 23);
-            // 
-            // abrirBalanza
-            // 
-            abrirBalanza.Name = "abrirBalanza";
-            abrirBalanza.Size = new Size(181, 22);
-            abrirBalanza.Text = "Abrir";
-            // 
-            // cerrarBalanza
-            // 
-            cerrarBalanza.Name = "cerrarBalanza";
-            cerrarBalanza.Size = new Size(181, 22);
-            cerrarBalanza.Text = "Cerrar";
-            // 
-            // btnGuardarConfiguracion
-            // 
-            btnGuardarConfiguracion.Name = "btnGuardarConfiguracion";
-            btnGuardarConfiguracion.Size = new Size(195, 22);
-            btnGuardarConfiguracion.Text = "Guardar Configuración";
-            btnGuardarConfiguracion.Click += btnGuardarConfiguracion_Click;
             // 
             // toolStripSplitButton1
             // 
@@ -176,12 +110,82 @@
             // 
             txtContrasena.Name = "txtContrasena";
             txtContrasena.Size = new Size(100, 23);
+            txtContrasena.TextChanged += txtContrasena_TextChanged;
             // 
             // btnIngresar
             // 
             btnIngresar.Name = "btnIngresar";
             btnIngresar.Size = new Size(180, 22);
             btnIngresar.Text = "Ingresar";
+            btnIngresar.Click += btnIngresar_Click;
+            // 
+            // menuConfiguracion
+            // 
+            menuConfiguracion.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            menuConfiguracion.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem3, toolStripMenuItem2, btnGuardarConfiguracion });
+            menuConfiguracion.Image = (Image)resources.GetObject("menuConfiguracion.Image");
+            menuConfiguracion.ImageScaling = ToolStripItemImageScaling.None;
+            menuConfiguracion.ImageTransparentColor = Color.Magenta;
+            menuConfiguracion.Name = "menuConfiguracion";
+            menuConfiguracion.Size = new Size(96, 20);
+            menuConfiguracion.Text = "Configuración";
+            // 
+            // toolStripMenuItem3
+            // 
+            toolStripMenuItem3.DropDownItems.AddRange(new ToolStripItem[] { cbxTramas, btnAbrirTrama, btnCerrarTrama });
+            toolStripMenuItem3.Name = "toolStripMenuItem3";
+            toolStripMenuItem3.Size = new Size(195, 22);
+            toolStripMenuItem3.Text = "Trama";
+            // 
+            // cbxTramas
+            // 
+            cbxTramas.Name = "cbxTramas";
+            cbxTramas.Size = new Size(121, 23);
+            // 
+            // btnAbrirTrama
+            // 
+            btnAbrirTrama.Name = "btnAbrirTrama";
+            btnAbrirTrama.Size = new Size(181, 22);
+            btnAbrirTrama.Text = "Abrir";
+            btnAbrirTrama.Click += btnAbrirTrama_Click;
+            // 
+            // btnCerrarTrama
+            // 
+            btnCerrarTrama.Name = "btnCerrarTrama";
+            btnCerrarTrama.Size = new Size(181, 22);
+            btnCerrarTrama.Text = "Cerrar";
+            // 
+            // toolStripMenuItem2
+            // 
+            toolStripMenuItem2.DropDownItems.AddRange(new ToolStripItem[] { cbxComBalanza, abrirBalanza, cerrarBalanza });
+            toolStripMenuItem2.Name = "toolStripMenuItem2";
+            toolStripMenuItem2.Size = new Size(195, 22);
+            toolStripMenuItem2.Text = "Balanza";
+            // 
+            // cbxComBalanza
+            // 
+            cbxComBalanza.Name = "cbxComBalanza";
+            cbxComBalanza.Size = new Size(121, 23);
+            // 
+            // abrirBalanza
+            // 
+            abrirBalanza.Name = "abrirBalanza";
+            abrirBalanza.Size = new Size(181, 22);
+            abrirBalanza.Text = "Abrir";
+            abrirBalanza.Click += abrirBalanza_Click;
+            // 
+            // cerrarBalanza
+            // 
+            cerrarBalanza.Name = "cerrarBalanza";
+            cerrarBalanza.Size = new Size(181, 22);
+            cerrarBalanza.Text = "Cerrar";
+            // 
+            // btnGuardarConfiguracion
+            // 
+            btnGuardarConfiguracion.Name = "btnGuardarConfiguracion";
+            btnGuardarConfiguracion.Size = new Size(195, 22);
+            btnGuardarConfiguracion.Text = "Guardar Configuración";
+            btnGuardarConfiguracion.Click += btnGuardarConfiguracion_Click;
             // 
             // ViewMain
             // 
@@ -217,7 +221,7 @@
         private ToolStripTextBox cerrarTrama;
         private StatusStrip statusStrip1;
         private ToolStripTextBox toolStripTextBox3;
-        private ToolStripDropDownButton toolStripDropDownButton1;
+        private ToolStripDropDownButton menuConfiguracion;
         private ToolStripMenuItem toolStripMenuItem3;
         private ToolStripComboBox cbxTramas;
         private ToolStripMenuItem btnAbrirTrama;

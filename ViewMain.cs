@@ -11,10 +11,13 @@ namespace DesktopWeightViewer
         private SerialPort serialPort1;
         private CbxTrama tramaReader;
         private float tamanoFuenteOriginal;
+        private bool tramaCambiada;
 
         public ViewMain()
         {
             InitializeComponent();
+
+            menuConfiguracion.Visible = false;
 
             txtTrama.Size = new Size(256, 128);
             txtTrama.ReadOnly = true;
@@ -32,12 +35,10 @@ namespace DesktopWeightViewer
             };
             tramaReader = new CbxTrama(serialPort1);
 
-            btnGuardarConfiguracion.Click += btnGuardarConfiguracion_Click;
-            btnAbrirTrama.Click += BtnAbrirTrama_Click;
             btnCerrarTrama.Click += BtnCerrarTrama_Click;
-            abrirBalanza.Click += abrirBalanza_Click;
             cerrarBalanza.Click += cerrarBalanza_Click;
             cbxComBalanza.DropDown += cbxComBalanza_DropDown;
+            cbxTramas.SelectedIndexChanged += cbxTramas_SelectedIndexChanged;
             timer1.Tick += Timer1_Tick;
             Load += ViewMain_Load;
             FormClosing += ViewMain_FormClosing;
@@ -45,9 +46,12 @@ namespace DesktopWeightViewer
 
         private void ViewMain_Load(object? sender, EventArgs e)
         {
-            CargarConfiguracion();
             EnumerarPuertosCOM();
             PoblarTiposTrama();
+            CargarConfiguracion();
+
+            if (!string.IsNullOrEmpty(cbxComBalanza.Text))
+                btnAbrirTrama_Click(null, EventArgs.Empty);
         }
 
         private void ViewMain_FormClosing(object? sender, FormClosingEventArgs e)
@@ -65,14 +69,14 @@ namespace DesktopWeightViewer
         private void PoblarTiposTrama()
         {
             cbxTramas.Items.Clear();
-            cbxTramas.Items.AddRange(new[] { "XKR", "XK310", "Generic" });
+            cbxTramas.Items.AddRange(new[] { "XKR", "XK310", "FT11", "Generic" });
         }
 
         /// <summary>
         /// Abre el puerto COM indicado en cbxComBalanza, configura el tipo de trama
         /// seleccionado en cbxTramas e inicia el timer de lectura.
         /// </summary>
-        private void BtnAbrirTrama_Click(object? sender, EventArgs e)
+        private void btnAbrirTrama_Click(object? sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(cbxComBalanza.Text))
             {
@@ -90,6 +94,11 @@ namespace DesktopWeightViewer
                 serialPort1.Open();
                 timer1.Interval = 200;
                 timer1.Start();
+
+                tramaCambiada = false;
+                txtTrama.Text = "-----";
+                RestaurarFuente();
+                SetControlesHabilitados(false);
             }
             catch (Exception ex)
             {
@@ -105,8 +114,9 @@ namespace DesktopWeightViewer
             if (serialPort1.IsOpen)
                 serialPort1.Close();
 
-            txtTrama.Text = string.Empty;
+            txtTrama.Text = "-----";
             RestaurarFuente();
+            SetControlesHabilitados(true);
         }
 
         /// <summary>
@@ -114,9 +124,10 @@ namespace DesktopWeightViewer
         /// </summary>
         private void Timer1_Tick(object? sender, EventArgs e)
         {
-            if (!serialPort1.IsOpen)
+            if (!serialPort1.IsOpen || string.IsNullOrEmpty(cbxTramas.Text))
             {
-                timer1.Stop();
+                txtTrama.Text = "-----";
+                RestaurarFuente();
                 return;
             }
 
@@ -126,13 +137,20 @@ namespace DesktopWeightViewer
 
                 if (!string.IsNullOrEmpty(tramaReader.PesoStr))
                 {
+                    tramaCambiada = false;
                     txtTrama.Text = tramaReader.PesoStr;
                     AjustarFuenteTrama();
+                }
+                else if (tramaCambiada)
+                {
+                    txtTrama.Text = "Trama incorrecta";
+                    RestaurarFuente();
                 }
             }
             catch
             {
-                // Si falla la lectura, se ignora este ciclo
+                txtTrama.Text = "-----";
+                RestaurarFuente();
             }
         }
 
@@ -168,6 +186,11 @@ namespace DesktopWeightViewer
                 serialPort1.Open();
                 timer1.Interval = 200;
                 timer1.Start();
+
+                tramaCambiada = false;
+                txtTrama.Text = "-----";
+                RestaurarFuente();
+                SetControlesHabilitados(false);
             }
             catch (Exception ex)
             {
@@ -183,8 +206,29 @@ namespace DesktopWeightViewer
             if (serialPort1.IsOpen)
                 serialPort1.Close();
 
-            txtTrama.Text = string.Empty;
+            txtTrama.Text = "-----";
             RestaurarFuente();
+            SetControlesHabilitados(true);
+        }
+
+        private void cbxTramas_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            tramaCambiada = true;
+            tramaReader.TipoTrama = cbxTramas.Text;
+
+            if (serialPort1.IsOpen)
+            {
+                txtTrama.Text = "-----";
+                RestaurarFuente();
+            }
+        }
+
+        private void SetControlesHabilitados(bool enabled)
+        {
+            cbxComBalanza.Enabled = enabled;
+            cbxTramas.Enabled = enabled;
+            btnAbrirTrama.Enabled = enabled;
+            abrirBalanza.Enabled = enabled;
         }
 
         /// <summary>
@@ -194,7 +238,7 @@ namespace DesktopWeightViewer
         {
             int len = txtTrama.Text.Length;
 
-            if (len <= 6)
+            if (len <= 4)
             {
                 RestaurarFuente();
                 return;
@@ -255,5 +299,52 @@ namespace DesktopWeightViewer
         {
             txtTrama.SelectionLength = 0;
         }
+
+
+        private void txtContrasena_TextChanged(object sender, EventArgs e)
+        {
+            ToolStripTextBox txt = sender as ToolStripTextBox;
+            string realText = txt.Tag as string ?? "";
+            if (txt.Text.Length > realText.Length)
+            {
+                realText += txt.Text.Substring(realText.Length);
+            }
+            else if (txt.Text.Length < realText.Length)
+            {
+                realText = realText.Substring(0, txt.Text.Length);
+            }
+            txt.Tag = realText;
+            txt.Text = new string('*', realText.Length);
+            txt.SelectionStart = txt.Text.Length;
+        }
+
+        private void btnIngresar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string user = txtUsuario.Text;
+                string password = txtContrasena.Tag as string ?? "";
+
+                if (user == "root" && password == "adminconfig")
+                {
+                    menuConfiguracion.Visible = true;
+                    MessageBox.Show("Se ha habilitado el menú de configuración.", "Acceso concedido",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Usuario o contraseña incorrectos.", "Acceso denegado",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error inesperado: " + ex.Message,
+                        "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        
     }
 }
