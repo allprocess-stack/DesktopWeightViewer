@@ -17,6 +17,10 @@
             {
                 components.Dispose();
             }
+            if (disposing && serialPort1 != null)
+            {
+                serialPort1.Dispose();
+            }
             base.Dispose(disposing);
         }
 

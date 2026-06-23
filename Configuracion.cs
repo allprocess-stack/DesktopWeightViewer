@@ -12,9 +12,12 @@ namespace DesktopWeightViewer
 
         public string COMBalanza { get; set; } = string.Empty;
 
-        /// <summary>Ruta del archivo de configuración en la raíz del proyecto.</summary>
+        /// <summary>Ruta del archivo de configuración en la carpeta de datos local del usuario.</summary>
         private static string RutaArchivo =>
-            Path.Combine(Directory.GetParent(AppContext.BaseDirectory)!.Parent!.Parent!.FullName, "config.json");
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DesktopWeightViewer",
+                "config.json");
 
         /// <summary>
         /// Guarda la configuración actual como JSON en el archivo.
