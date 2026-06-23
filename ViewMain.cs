@@ -66,12 +66,17 @@ namespace DesktopWeightViewer
 
         /// <summary>
         /// Se ejecuta cuando Windows está finalizando la sesión (apagado o reinicio).
-        /// Cierra el puerto serie en un hilo aparte para que el driver no quede
-        /// en estado inconsistente y se pueda volver a abrir después del reinicio.
+        /// Cierra el puerto serie inmediatamente y desactiva DTR/RTS para que el
+        /// driver libere el handle antes de que el proceso sea terminado.
         /// </summary>
         private void SystemEvents_SessionEnded(object? sender, SessionEndedEventArgs e)
         {
-            CerrarPuertoEnSegundoPlano();
+            if (serialPort1.IsOpen)
+            {
+                serialPort1.DtrEnable = false;
+                serialPort1.RtsEnable = false;
+                serialPort1.Close();
+            }
         }
 
         /// <summary>
@@ -87,55 +92,22 @@ namespace DesktopWeightViewer
             if (!string.IsNullOrEmpty(cbxComBalanza.Text))
             {
                 reintentosApertura = 0;
-                // 4000ms vs los 2000ms originales: da más margen al driver
-                // USB-serial para inicializarse después del arranque de Windows
-                timer2.Interval = 4000;
+                // 5000ms: un delay más largo al arranque evita que el primer
+                // intento de apertura coincida con la inicialización del driver
+                // USB-serial o con datos entrantes del arranque
+                timer2.Interval = 5000;
                 timer2.Start();
             }
         }
 
         /// <summary>
         /// Evento que se ejecuta al cerrar el formulario. Detiene el timer de reintento
-        /// y cierra el puerto serie en un hilo aparte con un pequeño retraso, para
-        /// permitir que las operaciones de E/S pendientes finalicen antes de liberar
-        /// el handle del puerto.
+        /// y cierra el puerto serie inmediatamente.
         /// </summary>
         private void ViewMain_FormClosing(object? sender, FormClosingEventArgs e)
         {
             timer2.Stop();
-            CerrarPuertoEnSegundoPlano();
-        }
-
-        /// <summary>
-        /// Cierra el puerto serie en un hilo foreground aparte con 1 segundo de retraso.
-        /// El hilo foreground mantiene vivo el proceso durante el apagado de Windows,
-        /// dando tiempo al driver para liberar correctamente el puerto.
-        /// Patrón tomado de BlzSoft (Main.cs).
-        /// </summary>
-        private void CerrarPuertoEnSegundoPlano()
-        {
-            if (!serialPort1.IsOpen)
-                return;
-
-            Thread hilo = new Thread(CerrarPuertoThread);
-            hilo.Start();
-        }
-
-        /// <summary>
-        /// Hilo foreground que espera 1 segundo antes de cerrar el puerto.
-        /// El retraso permite que las operaciones de E/S pendientes finalicen
-        /// y que el driver libere correctamente el handle del puerto serie.
-        /// </summary>
-        private void CerrarPuertoThread()
-        {
-            Thread.Sleep(1000);
-            try
-            {
-                serialPort1.Close();
-            }
-            catch
-            {
-            }
+            CerrarPuertoSiAbierto();
         }
 
         /// <summary>
@@ -148,13 +120,40 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Intenta abrir el puerto serie configurado. Si falla, lo reintenta hasta 10 veces
-        /// con un intervalo de 4 segundos entre cada intento. Se usa al iniciar el programa
-        /// para dar tiempo a que el driver del puerto USB-serial termine de inicializarse
-        /// después del arranque de Windows.
+        /// Intenta abrir el puerto serie configurado con watchdog de 2 fases:
+        ///
+        /// Fase 1 — El puerto no aparece en GetPortNames() (driver aún inicializando):
+        ///          reintenta cada 3s hasta 30 veces (~90s).
+        /// Fase 2 — El puerto existe pero Open() falla (driver ocupado con datos):
+        ///          reintenta con backoff 2.5s→10s hasta 40 intentos totales.
+        ///
+        /// Entre fase 1 y 2, fuerza un reset del driver abriendo/cerrando temporalmente
+        /// el puerto con DTR/RTS activos (ResetearPuerto).
         /// </summary>
         private void Timer2_Tick(object? sender, EventArgs e)
         {
+            reintentosApertura++;
+
+            // Fase 1: el driver aún no expone el puerto en el sistema
+            string[] puertos = SerialPort.GetPortNames();
+            if (!puertos.Contains(cbxComBalanza.Text))
+            {
+                if (reintentosApertura >= 30)
+                {
+                    timer2.Stop();
+                    MessageBox.Show(
+                        $"El puerto {cbxComBalanza.Text} no está disponible tras {reintentosApertura} intentos.\n\n" +
+                        "Verifique que:\n" +
+                        "- El dispositivo esté conectado.\n" +
+                        "- El driver USB-serial esté correctamente instalado.",
+                        "Puerto no encontrado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                timer2.Interval = 3000;
+                return;
+            }
+
+            // Fase 2: el puerto existe, intentar abrir (ResetearPuerto se llama dentro)
             var (exito, mensajeError) = AbrirPuerto(false);
             if (exito)
             {
@@ -162,8 +161,7 @@ namespace DesktopWeightViewer
             }
             else
             {
-                reintentosApertura++;
-                if (reintentosApertura >= 10)
+                if (reintentosApertura >= 40)
                 {
                     timer2.Stop();
                     MessageBox.Show($"No se pudo abrir el puerto {cbxComBalanza.Text} tras {reintentosApertura} intentos.\n" +
@@ -173,6 +171,11 @@ namespace DesktopWeightViewer
                         "- Ningún otro programa esté usando el puerto.\n" +
                         "- El driver del puerto serie esté correctamente instalado.",
                         "Error de conexión", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else
+                {
+                    // Backoff progresivo: 2.5s, 3s, 3.5s, 4s... máx 10s
+                    timer2.Interval = Math.Min(2500 + reintentosApertura * 500, 10000);
                 }
             }
         }
@@ -279,8 +282,36 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
+        /// Abre/cierra temporalmente el puerto con DTR/RTS activos para forzar
+        /// al driver USB-serial a resetear su estado interno. Esto ayuda cuando
+        /// el driver rechaza CreateFile() porque está procesando interrupciones
+        /// causadas por datos entrantes durante su inicialización.
+        /// </summary>
+        private void ResetearPuerto(string portName)
+        {
+            try
+            {
+                using var tempPort = new SerialPort(portName)
+                {
+                    DtrEnable = true,
+                    RtsEnable = true,
+                    ReadTimeout = 100,
+                    WriteTimeout = 100
+                };
+                tempPort.Open();
+                Thread.Sleep(50);
+                tempPort.DiscardInBuffer();
+                tempPort.Close();
+            }
+            catch
+            {
+            }
+        }
+
+        /// <summary>
         /// Abre el puerto serie con la configuración actual. Si <paramref name="mostrarError"/>
         /// es true, muestra un mensaje de error detallado en caso de fallo.
+        /// Antes de abrir, fuerza un reset del driver mediante <see cref="ResetearPuerto"/>.
         /// </summary>
         /// <returns>
         /// Una tupla (bool, string): el primer elemento indica si se abrió correctamente;
@@ -294,6 +325,7 @@ namespace DesktopWeightViewer
                 serialPort1.PortName = cbxComBalanza.Text;
                 tramaReader.TipoTrama = cbxTramas.Text;
                 tramaReader.Limpiar();
+                ResetearPuerto(cbxComBalanza.Text);
                 serialPort1.Open();
                 // Descarta datos basura acumulados en el buffer del driver
                 // durante el arranque de Windows (especialmente crítico cuando
