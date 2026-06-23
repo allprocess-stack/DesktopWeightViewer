@@ -73,7 +73,14 @@
             // statusStrip1
             // 
             statusStrip1.BackColor = SystemColors.InfoText;
-            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, menuConfiguracion });
+            // btnCerrarPrograma debe inicializarse antes de añadirse al Items del StatusStrip
+            btnCerrarPrograma = new ToolStripMenuItem();
+            btnCerrarPrograma.Alignment = ToolStripItemAlignment.Right;
+            btnCerrarPrograma.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            btnCerrarPrograma.Name = "btnCerrarPrograma";
+            btnCerrarPrograma.Size = new Size(100, 20);
+            btnCerrarPrograma.Text = "Cerrar App";
+            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripSplitButton1, menuConfiguracion, btnCerrarPrograma });
             statusStrip1.Location = new Point(0, 428);
             statusStrip1.Name = "statusStrip1";
             statusStrip1.Size = new Size(800, 22);
@@ -243,5 +250,6 @@
         private ToolStripMenuItem toolStripMenuItem1;
         private ToolStripTextBox txtContrasena;
         private ToolStripMenuItem btnIngresar;
+        private ToolStripMenuItem btnCerrarPrograma;
     }
 }

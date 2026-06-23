@@ -7,9 +7,10 @@ namespace DesktopWeightViewer
     /// </summary>
     public class Configuracion
     {
-        /// <summary>Tipo de trama seleccionado (ej. "XKR", "XK310", "Generic").</summary>
+        /// <summary>Tipo de trama seleccionado (ej. "XKR", "XK310", "FT11", "Generic").</summary>
         public string TipoTrama { get; set; } = string.Empty;
 
+        /// <summary>Puerto COM configurado para la báscula (ej. "COM3", "COM5").</summary>
         public string COMBalanza { get; set; } = string.Empty;
 
         /// <summary>Ruta del archivo de configuración en la carpeta de datos local del usuario.</summary>

@@ -3,6 +3,13 @@ using System.Text.RegularExpressions;
 
 namespace DesktopWeightViewer
 {
+    /// <summary>
+    /// Interpreta tramas de peso desde un buffer acumulado thread-safe
+    /// (ya no lee directamente del SerialPort para no bloquear el hilo de UI).
+    /// Los datos se insertan vía <see cref="Alimentar"/> desde el hilo de
+    /// <see cref="System.IO.Ports.SerialPort.DataReceived"/> y se parsean
+    /// desde el hilo de UI en <see cref="Leer"/>.
+    /// </summary>
     public class CbxTrama
     {
         public string Trama { get; private set; } = string.Empty;
@@ -10,9 +17,15 @@ namespace DesktopWeightViewer
         public int timeoutSerial { get; set; }
         public string TipoTrama { get; set; } = "XKR";
 
+        // Buffer circular protegido con lock, thread-safe para productor/consumidor
+        // entre DataReceived (hilo de pool) y Leer (hilo de UI vía BeginInvoke)
         private readonly StringBuilder _buffer = new StringBuilder(512);
         private readonly object _bufferLock = new object();
 
+        /// <summary>
+        /// Alimenta el buffer interno con datos crudos del puerto serie.
+        /// Llamado desde SerialPort_DataReceived (hilo de pool).
+        /// </summary>
         public void Alimentar(string datos)
         {
             if (string.IsNullOrEmpty(datos))
@@ -21,12 +34,20 @@ namespace DesktopWeightViewer
                 _buffer.Append(datos);
         }
 
+        /// <summary>
+        /// Limpia el buffer interno. Se usa al cambiar el tipo de trama
+        /// para evitar que datos viejos de otro formato causen falsos positivos.
+        /// </summary>
         public void LimpiarBuffer()
         {
             lock (_bufferLock)
                 _buffer.Clear();
         }
 
+        /// <summary>
+        /// Limpia todos los datos: trama parseada, peso y buffer interno.
+        /// Se usa al abrir un puerto nuevo o cambiar de tipo de trama.
+        /// </summary>
         public void Limpiar()
         {
             Trama = string.Empty;
@@ -34,6 +55,12 @@ namespace DesktopWeightViewer
             LimpiarBuffer();
         }
 
+        /// <summary>
+        /// Parsea el buffer según el formato activo.
+        /// Se llama desde ActualizarPesoDesdeTrama (hilo de UI).
+        /// Si encuentra una trama válida, la consume del buffer y actualiza PesoStr.
+        /// Si no hay suficientes datos (trama parcial), no consume nada y espera.
+        /// </summary>
         public void Leer()
         {
             string buffer;
@@ -63,6 +90,10 @@ namespace DesktopWeightViewer
             }
         }
 
+        /// <summary>
+        /// Formato XKR: STX (\x02) + signo (+/-) + dígitos de peso variables.
+        /// Busca el STX en el buffer, extrae signo y dígitos hasta el primer no-dígito.
+        /// </summary>
         private void ParsearXKR(string buffer)
         {
             int stxIdx = buffer.IndexOf('\x02');
@@ -103,11 +134,18 @@ namespace DesktopWeightViewer
             catch { }
         }
 
+        /// <summary>
+        /// XK310 tiene la misma estructura que XKR.
+        /// </summary>
         private void ParsearXK310(string buffer)
         {
             ParsearXKR(buffer);
         }
 
+        /// <summary>
+        /// FT11: STX (\x02) + codec (2 bytes: signo y decimales) + 6 dígitos de peso.
+        /// Requiere al menos 10 bytes desde STX.
+        /// </summary>
         private void ParsearFT11(string buffer)
         {
             int stxIdx = buffer.IndexOf('\x02');
@@ -144,6 +182,10 @@ namespace DesktopWeightViewer
             catch { }
         }
 
+        /// <summary>
+        /// Generic: busca el primer número con signo opcional vía regex.
+        /// Consume hasta el final del número encontrado.
+        /// </summary>
         private void ParsearGeneric(string buffer)
         {
             try
@@ -168,6 +210,12 @@ namespace DesktopWeightViewer
             catch { }
         }
 
+        /// <summary>
+        /// Remueve los primeros <paramref name="cantidad"/> caracteres del buffer.
+        /// Thread-safe: usa el mismo lock que Alimentar.
+        /// Si cantidad >= tamaño del buffer, lo limpia completamente para evitar
+        /// acumulación de basura no parseable.
+        /// </summary>
         private void ConsumirBuffer(int cantidad)
         {
             if (cantidad <= 0)

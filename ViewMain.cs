@@ -40,14 +40,21 @@ namespace DesktopWeightViewer
                 DataBits = 8,
                 Parity = Parity.None,
                 StopBits = StopBits.One,
+                // DTR/RTS habilitados: resetea el buffer interno del chip
+                // USB-serial al abrir el puerto, evitando datos basura acumulados
+                // durante el arranque de Windows (causa común de bloqueo)
                 DtrEnable = true,
                 RtsEnable = true
             };
+            // DataReceived reemplaza al timer1: corre en un hilo de pool,
+            // nunca bloquea el hilo de UI aunque ReadExisting() se demore
             serialPort1.DataReceived += SerialPort_DataReceived;
+            // Delegado cacheado para BeginInvoke (evita crear uno nuevo por trama)
             _actualizarPesoDelegate = ActualizarPesoDesdeTrama;
             tramaReader = new CbxTrama();
 
             btnCerrarTrama.Click += BtnCerrarTrama_Click;
+            btnCerrarPrograma.Click += btnCerrarPrograma_Click;
             cerrarBalanza.Click += cerrarBalanza_Click;
             cbxComBalanza.DropDown += cbxComBalanza_DropDown;
             cbxTramas.SelectedIndexChanged += cbxTramas_SelectedIndexChanged;
@@ -80,15 +87,18 @@ namespace DesktopWeightViewer
             if (!string.IsNullOrEmpty(cbxComBalanza.Text))
             {
                 reintentosApertura = 0;
+                // 4000ms vs los 2000ms originales: da más margen al driver
+                // USB-serial para inicializarse después del arranque de Windows
                 timer2.Interval = 4000;
                 timer2.Start();
             }
         }
 
         /// <summary>
-        /// Evento que se ejecuta al cerrar el formulario. Detiene los timers y cierra
-        /// el puerto serie en un hilo aparte con un pequeño retraso, para permitir
-        /// que las operaciones de E/S pendientes finalicen antes de liberar el handle.
+        /// Evento que se ejecuta al cerrar el formulario. Detiene el timer de reintento
+        /// y cierra el puerto serie en un hilo aparte con un pequeño retraso, para
+        /// permitir que las operaciones de E/S pendientes finalicen antes de liberar
+        /// el handle del puerto.
         /// </summary>
         private void ViewMain_FormClosing(object? sender, FormClosingEventArgs e)
         {
@@ -111,6 +121,11 @@ namespace DesktopWeightViewer
             hilo.Start();
         }
 
+        /// <summary>
+        /// Hilo foreground que espera 1 segundo antes de cerrar el puerto.
+        /// El retraso permite que las operaciones de E/S pendientes finalicen
+        /// y que el driver libere correctamente el handle del puerto serie.
+        /// </summary>
         private void CerrarPuertoThread()
         {
             Thread.Sleep(1000);
@@ -134,8 +149,9 @@ namespace DesktopWeightViewer
 
         /// <summary>
         /// Intenta abrir el puerto serie configurado. Si falla, lo reintenta hasta 10 veces
-        /// con un intervalo de 2 segundos entre cada intento. Se usa al iniciar el programa
-        /// para dar tiempo a que el driver del puerto USB-serial termine de inicializarse.
+        /// con un intervalo de 4 segundos entre cada intento. Se usa al iniciar el programa
+        /// para dar tiempo a que el driver del puerto USB-serial termine de inicializarse
+        /// después del arranque de Windows.
         /// </summary>
         private void Timer2_Tick(object? sender, EventArgs e)
         {
@@ -162,8 +178,8 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Abre el puerto COM indicado en cbxComBalanza, configura el tipo de trama
-        /// seleccionado en cbxTramas e inicia el timer de lectura.
+        /// Abre el puerto COM indicado en cbxComBalanza y configura el tipo de trama.
+        /// La lectura se inicia automáticamente vía el evento DataReceived.
         /// </summary>
         private void btnAbrirTrama_Click(object? sender, EventArgs e)
         {
@@ -183,7 +199,7 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Cierra el puerto serie y detiene el timer de lectura.
+        /// Cierra el puerto serie asociado al formato Trama.
         /// </summary>
         private void BtnCerrarTrama_Click(object? sender, EventArgs e)
         {
@@ -195,8 +211,23 @@ namespace DesktopWeightViewer
             SetControlesHabilitados(true);
         }
 
+        /// <summary>
+        /// Delegado cacheado para ActualizarPesoDesdeTrama.
+        /// Almacenarlo como field evita crear un nuevo objeto Action
+        /// en cada llamada a BeginInvoke desde DataReceived.
+        /// </summary>
         private readonly Action _actualizarPesoDelegate;
 
+        /// <summary>
+        /// Se dispara desde un hilo de pool cuando llegan datos al puerto serie.
+        /// Lee los datos crudos con ReadExisting (que ya no bloquea el UI),
+        /// los acumula en el buffer thread-safe de CbxTrama y programa la
+        /// actualización de la UI en el hilo principal vía BeginInvoke.
+        ///
+        /// Esto reemplaza al antiguo Timer1_Tick que ejecutaba ReadExisting
+        /// directamente en el hilo de UI, causando bloqueos al arrancar
+        /// con Windows (driver USB-serial en estado inconsistente).
+        /// </summary>
         private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             try
@@ -215,6 +246,10 @@ namespace DesktopWeightViewer
             }
         }
 
+        /// <summary>
+        /// Se ejecuta en el hilo de UI (vía BeginInvoke desde DataReceived).
+        /// Parsea el buffer acumulado y actualiza txtTrama con el peso.
+        /// </summary>
         private void ActualizarPesoDesdeTrama()
         {
             if (!serialPort1.IsOpen)
@@ -260,6 +295,9 @@ namespace DesktopWeightViewer
                 tramaReader.TipoTrama = cbxTramas.Text;
                 tramaReader.Limpiar();
                 serialPort1.Open();
+                // Descarta datos basura acumulados en el buffer del driver
+                // durante el arranque de Windows (especialmente crítico cuando
+                // la báscula ya estaba transmitiendo antes de abrir el puerto)
                 serialPort1.DiscardInBuffer();
 
                 tramaCambiada = false;
@@ -301,7 +339,8 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Abre el puerto COM seleccionado en modo balanza e inicia la lectura por timer.
+        /// Abre el puerto COM seleccionado en modo balanza.
+        /// La lectura se inicia automáticamente vía el evento DataReceived.
         /// </summary>
         private void abrirBalanza_Click(object? sender, EventArgs e)
         {
@@ -317,6 +356,7 @@ namespace DesktopWeightViewer
                 CerrarPuertoSiAbierto();
                 serialPort1.PortName = cbxComBalanza.Text;
                 serialPort1.Open();
+                // Descarta buffer basura del driver (misma razón que en AbrirPuerto)
                 serialPort1.DiscardInBuffer();
 
                 tramaCambiada = false;
@@ -332,7 +372,7 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Cierra el puerto COM de la balanza y detiene la lectura.
+        /// Cierra el puerto COM de la balanza.
         /// </summary>
         private void cerrarBalanza_Click(object? sender, EventArgs e)
         {
@@ -345,13 +385,16 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Se ejecuta al cambiar el tipo de trama. Marca que hubo un cambio y,
-        /// si el puerto está abierto, limpia la pantalla.
+        /// Se ejecuta al cambiar el tipo de trama. Marca que hubo un cambio,
+        /// limpia el buffer interno (para evitar que datos viejos de otro formato
+        /// provoquen falsos positivos) y, si el puerto está abierto, limpia la pantalla.
         /// </summary>
         private void cbxTramas_SelectedIndexChanged(object? sender, EventArgs e)
         {
             tramaCambiada = true;
             tramaReader.TipoTrama = cbxTramas.Text;
+            // Limpia el buffer acumulado para que el nuevo parser no se
+            // confunda con datos del formato anterior
             tramaReader.LimpiarBuffer();
 
             if (serialPort1.IsOpen)
@@ -404,8 +447,9 @@ namespace DesktopWeightViewer
         }
 
         /// <summary>
-        /// Cierra el puerto serie si está abierto y detiene el timer de lectura.
-        /// Se usa antes de cambiar PortName, ya que SerialPort requiere que el puerto esté cerrado.
+        /// Cierra el puerto serie si está abierto.
+        /// Se usa antes de cambiar PortName, ya que SerialPort requiere
+        /// que el puerto esté cerrado para modificar sus propiedades.
         /// </summary>
         private void CerrarPuertoSiAbierto()
         {
@@ -424,6 +468,21 @@ namespace DesktopWeightViewer
                 cbxTramas.Text = config.TipoTrama;
                 cbxComBalanza.Text = config.COMBalanza;
             }
+        }
+
+        /// <summary>
+        /// Muestra un mensaje de confirmación y cierra la aplicación si el usuario acepta.
+        /// </summary>
+        private void btnCerrarPrograma_Click(object? sender, EventArgs e)
+        {
+            DialogResult resultado = MessageBox.Show(
+                "¿Está seguro de que desea cerrar el programa?",
+                "Confirmar cierre",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (resultado == DialogResult.Yes)
+                Close();
         }
 
         /// <summary>
