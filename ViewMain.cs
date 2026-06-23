@@ -40,16 +40,17 @@ namespace DesktopWeightViewer
                 DataBits = 8,
                 Parity = Parity.None,
                 StopBits = StopBits.One,
-                ReadTimeout = 500,
-                WriteTimeout = 500
+                DtrEnable = true,
+                RtsEnable = true
             };
-            tramaReader = new CbxTrama(serialPort1);
+            serialPort1.DataReceived += SerialPort_DataReceived;
+            _actualizarPesoDelegate = ActualizarPesoDesdeTrama;
+            tramaReader = new CbxTrama();
 
             btnCerrarTrama.Click += BtnCerrarTrama_Click;
             cerrarBalanza.Click += cerrarBalanza_Click;
             cbxComBalanza.DropDown += cbxComBalanza_DropDown;
             cbxTramas.SelectedIndexChanged += cbxTramas_SelectedIndexChanged;
-            timer1.Tick += Timer1_Tick;
             timer2.Tick += Timer2_Tick;
             Load += ViewMain_Load;
             FormClosing += ViewMain_FormClosing;
@@ -79,7 +80,7 @@ namespace DesktopWeightViewer
             if (!string.IsNullOrEmpty(cbxComBalanza.Text))
             {
                 reintentosApertura = 0;
-                timer2.Interval = 2000;
+                timer2.Interval = 4000;
                 timer2.Start();
             }
         }
@@ -91,7 +92,6 @@ namespace DesktopWeightViewer
         /// </summary>
         private void ViewMain_FormClosing(object? sender, FormClosingEventArgs e)
         {
-            timer1.Stop();
             timer2.Stop();
             CerrarPuertoEnSegundoPlano();
         }
@@ -187,8 +187,6 @@ namespace DesktopWeightViewer
         /// </summary>
         private void BtnCerrarTrama_Click(object? sender, EventArgs e)
         {
-            timer1.Stop();
-
             if (serialPort1.IsOpen)
                 serialPort1.Close();
 
@@ -197,18 +195,30 @@ namespace DesktopWeightViewer
             SetControlesHabilitados(true);
         }
 
-        /// <summary>
-        /// Timer de lectura: lee la trama según el tipo seleccionado y actualiza txtTrama
-        /// con el peso obtenido. Se ejecuta cada 200 ms.
-        /// </summary>
-        private void Timer1_Tick(object? sender, EventArgs e)
+        private readonly Action _actualizarPesoDelegate;
+
+        private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            if (!serialPort1.IsOpen || string.IsNullOrEmpty(cbxTramas.Text))
+            try
             {
-                txtTrama.Text = "-----";
-                RestaurarFuente();
-                return;
+                string data = serialPort1.ReadExisting();
+                if (string.IsNullOrEmpty(data))
+                    return;
+
+                tramaReader.Alimentar(data);
+
+                if (!IsDisposed)
+                    BeginInvoke(_actualizarPesoDelegate);
             }
+            catch
+            {
+            }
+        }
+
+        private void ActualizarPesoDesdeTrama()
+        {
+            if (!serialPort1.IsOpen)
+                return;
 
             try
             {
@@ -250,8 +260,7 @@ namespace DesktopWeightViewer
                 tramaReader.TipoTrama = cbxTramas.Text;
                 tramaReader.Limpiar();
                 serialPort1.Open();
-                timer1.Interval = 200;
-                timer1.Start();
+                serialPort1.DiscardInBuffer();
 
                 tramaCambiada = false;
                 txtTrama.Text = "-----";
@@ -308,8 +317,7 @@ namespace DesktopWeightViewer
                 CerrarPuertoSiAbierto();
                 serialPort1.PortName = cbxComBalanza.Text;
                 serialPort1.Open();
-                timer1.Interval = 200;
-                timer1.Start();
+                serialPort1.DiscardInBuffer();
 
                 tramaCambiada = false;
                 txtTrama.Text = "-----";
@@ -328,8 +336,6 @@ namespace DesktopWeightViewer
         /// </summary>
         private void cerrarBalanza_Click(object? sender, EventArgs e)
         {
-            timer1.Stop();
-
             if (serialPort1.IsOpen)
                 serialPort1.Close();
 
@@ -346,6 +352,7 @@ namespace DesktopWeightViewer
         {
             tramaCambiada = true;
             tramaReader.TipoTrama = cbxTramas.Text;
+            tramaReader.LimpiarBuffer();
 
             if (serialPort1.IsOpen)
             {
@@ -403,10 +410,7 @@ namespace DesktopWeightViewer
         private void CerrarPuertoSiAbierto()
         {
             if (serialPort1.IsOpen)
-            {
-                timer1.Stop();
                 serialPort1.Close();
-            }
         }
 
         /// <summary>

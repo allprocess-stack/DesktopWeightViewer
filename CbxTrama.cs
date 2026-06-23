@@ -1,85 +1,90 @@
-using System.IO.Ports;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DesktopWeightViewer
 {
-    /// <summary>
-    /// Interpreta tramas de peso provenientes de una báscula por puerto serie.
-    /// Soporta múltiples formatos: XKR, XK310, Generic.
-    /// </summary>
     public class CbxTrama
     {
-        /// <summary>Trama completa desde STX hasta el final.</summary>
         public string Trama { get; private set; } = string.Empty;
-
-        /// <summary>Peso formateado como texto (con signo negativo si corresponde).</summary>
         public string PesoStr { get; private set; } = string.Empty;
-
-        /// <summary>Contador de timeout de lectura serie.</summary>
         public int timeoutSerial { get; set; }
-
-        /// <summary>Formato de trama activo ("XKR", "XK310" o "Generic").</summary>
         public string TipoTrama { get; set; } = "XKR";
 
-        private readonly SerialPort serialPort;
+        private readonly StringBuilder _buffer = new StringBuilder(512);
+        private readonly object _bufferLock = new object();
 
-        public CbxTrama(SerialPort serialPort)
+        public void Alimentar(string datos)
         {
-            this.serialPort = serialPort;
+            if (string.IsNullOrEmpty(datos))
+                return;
+            lock (_bufferLock)
+                _buffer.Append(datos);
         }
 
-        /// <summary>
-        /// Lee una trama del puerto serie usando el formato activo (<see cref="TipoTrama"/>).
-        /// </summary>
+        public void LimpiarBuffer()
+        {
+            lock (_bufferLock)
+                _buffer.Clear();
+        }
+
+        public void Limpiar()
+        {
+            Trama = string.Empty;
+            PesoStr = string.Empty;
+            LimpiarBuffer();
+        }
+
         public void Leer()
         {
+            string buffer;
+            lock (_bufferLock)
+                buffer = _buffer.ToString();
+
+            if (string.IsNullOrEmpty(buffer))
+            {
+                PesoStr = string.Empty;
+                return;
+            }
+
             switch (TipoTrama)
             {
                 case "XK310":
-                    ReadWeight_XK310();
+                    ParsearXK310(buffer);
                     break;
                 case "FT11":
-                    ReadWeight_FT11();
+                    ParsearFT11(buffer);
                     break;
                 case "Generic":
-                    ReadWeight_Generic();
+                    ParsearGeneric(buffer);
                     break;
                 default:
-                    ReadWeight_XKR();
+                    ParsearXKR(buffer);
                     break;
             }
         }
 
-        /// <summary>
-        /// Lee y decodifica una trama de peso con formato XKR.
-        /// Formato esperado: STX + signo (1 char) + peso (dígitos variables).
-        /// Lee todos los dígitos consecutivos después del signo.
-        /// </summary>
-        public void ReadWeight_XKR()
+        private void ParsearXKR(string buffer)
         {
-            string text, rawPeso;
-            int lon;
-
-            text = serialPort.ReadExisting();
-            lon = text.Length;
-
-            if (lon < 9)
+            int stxIdx = buffer.IndexOf('\x02');
+            if (stxIdx < 0)
                 return;
+
+            if (buffer.Length < stxIdx + 3)
+                return;
+
+            char signo = buffer[stxIdx + 1];
+
+            int idx = stxIdx + 2;
+            while (idx < buffer.Length && char.IsDigit(buffer[idx]))
+                idx++;
+
+            if (idx == stxIdx + 2)
+                return;
+
+            string rawPeso = buffer.Substring(stxIdx + 2, idx - (stxIdx + 2));
 
             try
             {
-                Trama = text.Substring(text.IndexOf('\x02'));
-
-                char signo = Trama.ElementAt(1);
-
-                int idx = 2;
-                while (idx < Trama.Length && char.IsDigit(Trama[idx]))
-                    idx++;
-                rawPeso = Trama.Substring(2, idx - 2);
-
-                if (string.IsNullOrEmpty(rawPeso))
-                    return;
-
                 long peso = long.Parse(rawPeso);
                 if (signo != '+')
                     peso = -peso;
@@ -87,132 +92,39 @@ namespace DesktopWeightViewer
                 if (peso < -999)
                 {
                     PesoStr = "Valor negativo excedido";
+                    ConsumirBuffer(idx);
                     return;
                 }
 
-                timeoutSerial = 0;
+                Trama = buffer.Substring(stxIdx, idx - stxIdx);
                 PesoStr = peso.ToString("0");
+                ConsumirBuffer(idx);
             }
-            catch
-            {
-                // Si hay error de parsing, se ignora esta lectura
-            }
+            catch { }
         }
 
-        /// <summary>
-        /// Lee y decodifica una trama de peso con formato XK310.
-        /// Formato esperado: STX + signo (1 char) + dígitos de peso variables.
-        /// </summary>
-        public void ReadWeight_XK310()
+        private void ParsearXK310(string buffer)
         {
-            string text, rawPeso;
-            int lon;
-
-            text = serialPort.ReadExisting();
-            lon = text.Length;
-
-            if (lon < 9)
-                return;
-
-            try
-            {
-                Trama = text.Substring(text.IndexOf('\x02'));
-
-                char signo = Trama.ElementAt(1);
-
-                int idx = 2;
-                while (idx < Trama.Length && char.IsDigit(Trama[idx]))
-                    idx++;
-                rawPeso = Trama.Substring(2, idx - 2);
-
-                if (string.IsNullOrEmpty(rawPeso))
-                    return;
-
-                long peso = long.Parse(rawPeso);
-                if (signo != '+')
-                    peso = -peso;
-
-                if (peso < -999)
-                {
-                    PesoStr = "Valor negativo excedido";
-                    return;
-                }
-
-                timeoutSerial = 0;
-                PesoStr = peso.ToString("0");
-            }
-            catch
-            {
-                // Si hay error de parsing, se ignora esta lectura
-            }
+            ParsearXKR(buffer);
         }
 
-        /// <summary>
-        /// Lee y extrae el primer número encontrado en el buffer del puerto serie.
-        /// Formato: busca cualquier valor numérico con signo opcional.
-        /// </summary>
-        public void ReadWeight_Generic()
+        private void ParsearFT11(string buffer)
         {
-            string text;
-
-            text = serialPort.ReadExisting();
-
-            if (string.IsNullOrEmpty(text))
+            int stxIdx = buffer.IndexOf('\x02');
+            if (stxIdx < 0)
                 return;
 
-            try
-            {
-                Trama = text;
-
-                // Busca el primer número con signo opcional en la trama
-                Match match = Regex.Match(text, @"(-?\d+)");
-                if (match.Success)
-                {
-                    long peso = long.Parse(match.Groups[1].Value);
-
-                    if (peso < -999)
-                    {
-                        PesoStr = "Valor negativo excedido";
-                        return;
-                    }
-
-                    timeoutSerial = 0;
-                    PesoStr = peso.ToString("0");
-                }
-            }
-            catch
-            {
-                // Si hay error de parsing, se ignora esta lectura
-            }
-        }
-
-        /// <summary>
-        /// Lee y decodifica una trama de peso con formato FT11.
-        /// Formato esperado: STX + codec (2 chars: signo y decimales) + 6 dígitos de peso.
-        /// </summary>
-        public void ReadWeight_FT11()
-        {
-            string text, rawPeso;
-            char[] codec;
-            int reg, signo;
-            int lon;
-            text = serialPort.ReadExisting();
-            lon = text.Length;
-
-            if (lon < 16)
+            if (buffer.Length < stxIdx + 10)
                 return;
 
-            Trama = text.Substring(text.IndexOf('\x02'));
-            rawPeso = Trama.Substring(4, 6);
-            timeoutSerial = 0;
+            string rawPeso = buffer.Substring(stxIdx + 4, 6);
+            string codecStr = buffer.Substring(stxIdx + 1, 2);
 
-            codec = Trama.Substring(1, 2).ToCharArray();
-
-            reg = codec[1] & 0x02;
-            if (reg == 2)
-            { signo = -1; }
+            int signo;
+            if ((codecStr[1] & 0x02) == 2)
+                signo = -1;
             else
-            { signo = 1; }
+                signo = 1;
 
             try
             {
@@ -221,21 +133,52 @@ namespace DesktopWeightViewer
                 if (peso < -999)
                 {
                     PesoStr = "Valor negativo excedido";
+                    ConsumirBuffer(stxIdx + 10);
                     return;
                 }
 
+                Trama = buffer.Substring(stxIdx, 10);
                 PesoStr = peso.ToString();
+                ConsumirBuffer(stxIdx + 10);
             }
-            catch { return; }
+            catch { }
         }
 
-        /// <summary>
-        /// Limpia los resultados de la última lectura.
-        /// </summary>
-        public void Limpiar()
+        private void ParsearGeneric(string buffer)
         {
-            Trama = string.Empty;
-            PesoStr = string.Empty;
+            try
+            {
+                Match match = Regex.Match(buffer, @"(-?\d+)");
+                if (!match.Success)
+                    return;
+
+                long peso = long.Parse(match.Groups[1].Value);
+
+                if (peso < -999)
+                {
+                    PesoStr = "Valor negativo excedido";
+                    ConsumirBuffer(buffer.Length);
+                    return;
+                }
+
+                Trama = match.Value;
+                PesoStr = peso.ToString("0");
+                ConsumirBuffer(match.Index + match.Length);
+            }
+            catch { }
+        }
+
+        private void ConsumirBuffer(int cantidad)
+        {
+            if (cantidad <= 0)
+                return;
+            lock (_bufferLock)
+            {
+                if (cantidad >= _buffer.Length)
+                    _buffer.Clear();
+                else
+                    _buffer.Remove(0, cantidad);
+            }
         }
     }
 }
